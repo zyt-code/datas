@@ -18,6 +18,7 @@ from .connection_dialog import ConnectionDialog
 from .sql_editor import SQLEditor
 from .table_viewer import TableViewer
 from .query_result import QueryResult
+from .query_tabs import QueryTabWidget
 from database.connection_manager import ConnectionManager
 from database.query_executor import QueryExecutor
 from database.connection_config import ConnectionConfig
@@ -94,7 +95,7 @@ class MainWindow(QMainWindow):
         
         execute_action = QAction("执行查询(&E)", self)
         execute_action.setShortcut("F5")
-        execute_action.triggered.connect(self.execute_query)
+        execute_action.triggered.connect(self.execute_current_tab_query)
         query_menu.addAction(execute_action)
         
         # 工具菜单
@@ -121,7 +122,7 @@ class MainWindow(QMainWindow):
         
         # 执行查询
         execute_action = QAction("执行查询", self)
-        execute_action.triggered.connect(self.execute_query)
+        execute_action.triggered.connect(self.execute_current_tab_query)
         toolbar.addAction(execute_action)
         
         # 停止查询
@@ -170,60 +171,10 @@ class MainWindow(QMainWindow):
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
         
-        # 创建工具栏
-        toolbar_widget = QWidget()
-        toolbar_layout = QHBoxLayout(toolbar_widget)
-        toolbar_layout.setContentsMargins(5, 5, 5, 5)
-        
-        # 数据库选择下拉框
-        toolbar_layout.addWidget(QLabel("数据库:"))
-        
-        self.database_combo = QComboBox()
-        self.database_combo.setMinimumWidth(150)
-        self.database_combo.addItem("请选择数据库")
-        self.database_combo.currentTextChanged.connect(self.on_database_changed)
-        toolbar_layout.addWidget(self.database_combo)
-        
-        # 刷新数据库列表按钮
-        refresh_db_btn = QPushButton("刷新")
-        refresh_db_btn.clicked.connect(self.refresh_database_list)
-        toolbar_layout.addWidget(refresh_db_btn)
-        
-        # 添加弹性空间
-        toolbar_layout.addStretch()
-        
-        # 执行按钮
-        execute_btn = QPushButton("执行 (F5)")
-        execute_btn.clicked.connect(self.execute_query)
-        execute_btn.setShortcut(QKeySequence("F5"))
-        toolbar_layout.addWidget(execute_btn)
-        
-        right_layout.addWidget(toolbar_widget)
-        
-        # 创建垂直分割器
-        right_splitter = QSplitter(Qt.Vertical)
-        right_layout.addWidget(right_splitter)
-        
-        # SQL编辑器
-        self.sql_editor = SQLEditor()
-        right_splitter.addWidget(self.sql_editor)
-        
-        # 结果标签页
-        self.result_tabs = QTabWidget()
-        
-        # 查询结果
-        self.query_result = QueryResult()
-        self.result_tabs.addTab(self.query_result, "查询结果")
-        
-        # 消息
-        self.message_text = QTextEdit()
-        self.message_text.setMaximumHeight(150)
-        self.result_tabs.addTab(self.message_text, "消息")
-        
-        right_splitter.addWidget(self.result_tabs)
-        
-        # 设置分割器比例
-        right_splitter.setSizes([400, 500])
+        # 创建查询标签页管理器
+        self.query_tabs = QueryTabWidget()
+        self.query_tabs.execute_requested.connect(self.execute_query_from_tab)
+        right_layout.addWidget(self.query_tabs)
         
         parent.addWidget(right_widget)
         
@@ -251,6 +202,9 @@ class MainWindow(QMainWindow):
         item.setText(0, conn_info['name'])
         item.setData(0, Qt.UserRole, conn_info)
         
+        # 更新标签页连接列表
+        self.update_tab_connections()
+        
     def on_tree_item_double_clicked(self, item, column):
         """树形控件项目双击事件"""
         conn_info = item.data(0, Qt.UserRole)
@@ -262,11 +216,21 @@ class MainWindow(QMainWindow):
         try:
             connection = self.connection_manager.create_connection(conn_info)
             if connection:
+                # 将连接保存到树形控件项目中
+                root = self.connection_tree.invisibleRootItem()
+                for i in range(root.childCount()):
+                    item = root.child(i)
+                    item_conn_info = item.data(0, Qt.UserRole)
+                    if item_conn_info and item_conn_info.get('name') == conn_info['name']:
+                        item.connection = connection
+                        break
+                        
                 self.current_connection = connection
                 self.status_bar.showMessage(f"已连接到 {conn_info['name']}")
                 self.load_database_structure()
-                # 自动刷新数据库列表
-                self.refresh_database_list()
+                
+                # 更新所有标签页的连接列表
+                self.update_tab_connections()
             else:
                 QMessageBox.warning(self, "连接失败", "无法连接到数据库")
         except Exception as e:
@@ -277,49 +241,99 @@ class MainWindow(QMainWindow):
         # TODO: 实现数据库结构加载
         pass
         
-    def execute_query(self):
-        """执行查询"""
-        if not self.current_connection:
-            QMessageBox.warning(self, "警告", "请先连接到数据库")
-            return
-            
-        sql = self.sql_editor.get_selected_text() or self.sql_editor.toPlainText()
-        if not sql.strip():
-            QMessageBox.warning(self, "警告", "请输入SQL语句")
-            return
-            
+    def update_tab_connections(self):
+        """更新所有标签页的连接列表"""
+        # 获取所有连接名称
+        connections = []
+        root = self.connection_tree.invisibleRootItem()
+        for i in range(root.childCount()):
+            item = root.child(i)
+            conn_info = item.data(0, Qt.UserRole)
+            if conn_info:
+                connections.append(conn_info.get('name', ''))
+                
+        # 更新标签页连接列表
+        self.query_tabs.update_connections(connections)
+        
+    def execute_current_tab_query(self):
+        """执行当前标签页的查询"""
+        current_tab = self.query_tabs.get_current_tab()
+        if current_tab:
+            current_tab.execute_query()
+        
+    def execute_query_from_tab(self, connection_name, database_name, sql, is_user_query=True):
+        """从标签页执行查询"""
         try:
-            # 显示执行状态
-            self.status_bar.showMessage("正在执行查询...")
-            self.message_text.append(f"执行SQL: {sql[:100]}{'...' if len(sql) > 100 else ''}")
+            # 获取指定的连接
+            connection = self.get_connection_by_name(connection_name)
+            if not connection:
+                error_msg = f"连接 '{connection_name}' 不存在或未连接"
+                self.query_tabs.display_message(error_msg)
+                QMessageBox.warning(self, "警告", error_msg)
+                return
+                
+            # 显示执行状态（仅用户查询显示）
+            if is_user_query:
+                self.status_bar.showMessage("正在执行查询...")
+                self.query_tabs.display_message(f"执行SQL: {sql[:100]}{'...' if len(sql) > 100 else ''}")
             
             # 执行查询
-            result = self.query_executor.execute(self.current_connection, sql)
+            result = self.query_executor.execute(connection, sql)
             
-
-            
-            # 显示结果
-            self.query_result.display_result(result)
-            
-            # 更新消息
-            if isinstance(result, dict):
+            # 特殊处理SHOW DATABASES查询
+            if sql.strip().upper().startswith('SHOW DATABASES'):
                 if 'data' in result:
-                    row_count = len(result['data'])
-                    self.message_text.append(f"查询执行成功，返回 {row_count} 行数据")
-                elif 'affected_rows' in result:
-                    self.message_text.append(f"查询执行成功，影响 {result['affected_rows']} 行")
-                else:
-                    self.message_text.append("查询执行成功")
-            else:
-                self.message_text.append("查询执行成功")
+                    databases = [str(row[0]) for row in result['data'] if row]
+                    self.query_tabs.update_database_list(databases)
+                    
+            # 只有用户查询才显示结果
+            if is_user_query:
+                # 显示结果
+                self.query_tabs.display_result(result)
                 
-            self.status_bar.showMessage("查询执行完成")
+                # 更新消息
+                if isinstance(result, dict):
+                    if 'data' in result:
+                        row_count = len(result['data'])
+                        self.query_tabs.display_message(f"查询执行成功，返回 {row_count} 行数据")
+                    elif 'affected_rows' in result:
+                        self.query_tabs.display_message(f"查询执行成功，影响 {result['affected_rows']} 行")
+                    else:
+                        self.query_tabs.display_message("查询执行成功")
+                else:
+                    self.query_tabs.display_message("查询执行成功")
+                    
+                self.status_bar.showMessage("查询执行完成")
             
         except Exception as e:
             error_msg = f"查询执行失败：{str(e)}"
-            self.message_text.append(error_msg)
-            self.status_bar.showMessage("查询执行失败")
-            QMessageBox.critical(self, "查询错误", error_msg)
+            # 只有用户查询的错误才显示
+            if is_user_query:
+                self.query_tabs.display_message(error_msg)
+                self.status_bar.showMessage("查询执行失败")
+                QMessageBox.critical(self, "查询错误", error_msg)
+            
+    def get_connection_by_name(self, connection_name):
+        """根据连接名称获取连接对象"""
+        # 遍历连接树，查找对应的连接
+        root = self.connection_tree.invisibleRootItem()
+        for i in range(root.childCount()):
+            item = root.child(i)
+            conn_info = item.data(0, Qt.UserRole)
+            if conn_info and conn_info.get('name') == connection_name:
+                # 检查是否已连接
+                if hasattr(item, 'connection') and item.connection:
+                    return item.connection
+                else:
+                    # 尝试连接
+                    try:
+                        connection = self.connection_manager.create_connection(conn_info)
+                        if connection.test_connection():
+                            item.connection = connection
+                            return connection
+                    except Exception:
+                        pass
+        return None
             
     def stop_query(self):
         """停止查询"""
@@ -335,7 +349,9 @@ class MainWindow(QMainWindow):
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
-                    self.sql_editor.setPlainText(content)
+                    current_tab = self.query_tabs.get_current_tab()
+                    if current_tab:
+                        current_tab.set_sql_text(content)
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"打开文件失败：{str(e)}")
                 
@@ -346,9 +362,13 @@ class MainWindow(QMainWindow):
         )
         if file_path:
             try:
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(self.sql_editor.toPlainText())
-                QMessageBox.information(self, "成功", "文件保存成功")
+                current_tab = self.query_tabs.get_current_tab()
+                if current_tab:
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(current_tab.get_sql_text())
+                    QMessageBox.information(self, "成功", "文件保存成功")
+                else:
+                    QMessageBox.warning(self, "警告", "没有可用的查询标签页")
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"保存文件失败：{str(e)}")
                 
@@ -357,7 +377,13 @@ class MainWindow(QMainWindow):
         try:
             connections = self.connection_config.load_all_connections()
             for conn_info in connections:
-                self.add_connection_to_tree(conn_info)
+                # 直接添加到树形控件，不调用add_connection_to_tree避免重复更新
+                item = QTreeWidgetItem(self.connection_tree)
+                item.setText(0, conn_info['name'])
+                item.setData(0, Qt.UserRole, conn_info)
+                
+            # 一次性更新标签页连接列表
+            self.update_tab_connections()
                 
             if connections:
                 self.status_bar.showMessage(f"已加载 {len(connections)} 个保存的连接")
@@ -379,6 +405,9 @@ class MainWindow(QMainWindow):
                     if conn_info and conn_info.get('name') == connection_name:
                         root.removeChild(item)
                         break
+                        
+                # 更新标签页连接列表
+                self.update_tab_connections()
                         
                 self.status_bar.showMessage(f"连接 '{connection_name}' 已删除")
                 return True
@@ -528,50 +557,7 @@ class MainWindow(QMainWindow):
             dialog.host_edit.setText(new_conn_info.get('host', ''))
             dialog.port_spin.setValue(new_conn_info.get('port', 3306))
             
-    def refresh_database_list(self):
-        """刷新数据库列表"""
-        if not self.current_connection:
-            QMessageBox.warning(self, "警告", "请先连接到数据库服务器")
-            return
-            
-        try:
-            # 执行 SHOW DATABASES 查询
-            result = self.current_connection.execute("SHOW DATABASES")
-            
-            # 清空当前下拉框
-            self.database_combo.clear()
-            self.database_combo.addItem("请选择数据库")
-            
-            # 添加数据库到下拉框
-            if 'data' in result:
-                for row in result['data']:
-                    if row:  # 确保行不为空
-                        database_name = str(row[0])  # 数据库名通常在第一列
-                        self.database_combo.addItem(database_name)
-                        
-            self.status_bar.showMessage(f"已刷新数据库列表，找到 {len(result.get('data', []))} 个数据库")
-            
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"刷新数据库列表失败：{str(e)}")
-            self.status_bar.showMessage("刷新数据库列表失败")
-            
-    def on_database_changed(self, database_name):
-        """数据库选择改变时的处理"""
-        if database_name == "请选择数据库" or not database_name:
-            return
-            
-        if not self.current_connection:
-            QMessageBox.warning(self, "警告", "请先连接到数据库服务器")
-            return
-            
-        try:
-            # 切换到选定的数据库
-            self.current_connection.execute(f"USE `{database_name}`")
-            self.status_bar.showMessage(f"已切换到数据库: {database_name}")
-            
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"切换数据库失败：{str(e)}")
-            self.status_bar.showMessage("切换数据库失败")
+
             dialog.database_edit.setText(new_conn_info.get('database', ''))
             dialog.username_edit.setText(new_conn_info.get('username', ''))
             # 不复制密码
