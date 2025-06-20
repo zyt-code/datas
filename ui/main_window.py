@@ -9,10 +9,13 @@ from PySide6.QtWidgets import (
     QMenuBar, QToolBar, QStatusBar, QTabWidget, QTreeWidget,
     QTreeWidgetItem, QTextEdit, QTableWidget, QMessageBox,
     QFileDialog, QInputDialog, QDialog, QMenu, QLabel,
-    QComboBox, QPushButton
+    QComboBox, QPushButton, QTextBrowser, QApplication
 )
-from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QIcon, QKeySequence, QFont, QAction
+from PySide6.QtCore import Qt, QTimer, Signal, QSysInfo
+from PySide6.QtGui import QIcon, QKeySequence, QFont, QAction, QClipboard
+import platform
+import sys
+from datetime import datetime
 
 from .connection_dialog import ConnectionDialog
 from .sql_editor import SQLEditor
@@ -22,6 +25,166 @@ from .query_tabs import QueryTabWidget
 from database.connection_manager import ConnectionManager
 from database.query_executor import QueryExecutor
 from database.connection_config import ConnectionConfig
+
+class AboutDialog(QDialog):
+    """关于对话框"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("关于 PySide6 Navicat")
+        self.setFixedSize(500, 400)
+        self.setModal(True)
+        
+        self.init_ui()
+        
+    def init_ui(self):
+        """初始化界面"""
+        layout = QVBoxLayout(self)
+        
+        # 创建文本浏览器显示版本信息
+        self.text_browser = QTextBrowser()
+        self.text_browser.setReadOnly(True)
+        self.text_browser.setHtml(self.get_version_info())
+        layout.addWidget(self.text_browser)
+        
+        # 按钮布局
+        button_layout = QHBoxLayout()
+        
+        # 复制按钮
+        copy_button = QPushButton("复制")
+        copy_button.clicked.connect(self.copy_to_clipboard)
+        button_layout.addWidget(copy_button)
+        
+        # 确定按钮
+        ok_button = QPushButton("确定")
+        ok_button.clicked.connect(self.accept)
+        ok_button.setDefault(True)
+        button_layout.addWidget(ok_button)
+        
+        layout.addLayout(button_layout)
+        
+    def get_version_info(self):
+        """获取版本信息"""
+        # 获取系统信息
+        system_info = platform.system()
+        system_version = platform.release()
+        machine = platform.machine()
+        processor = platform.processor()
+        
+        # 获取Python版本
+        python_version = sys.version.split()[0]
+        
+        # 获取PySide6版本
+        try:
+            import PySide6
+            pyside_version = PySide6.__version__
+        except:
+            pyside_version = "未知"
+            
+        # 获取当前时间
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # 获取屏幕信息
+        app = QApplication.instance()
+        if app:
+            screens = app.screens()
+            screen_info = ""
+            for i, screen in enumerate(screens):
+                geometry = screen.geometry()
+                dpr = screen.devicePixelRatio()
+                if i == 0:
+                    screen_info += f"({geometry.width()}x{geometry.height()})"
+                    if dpr > 1:
+                        screen_info += "/Retina"
+                else:
+                    screen_info += f", *({geometry.width()}x{geometry.height()})"
+        else:
+            screen_info = "未知"
+            
+        # 构建版本信息HTML
+        html = f"""
+        <style>
+        body {{ font-family: 'Microsoft YaHei', Arial, sans-serif; font-size: 12px; }}
+        .title {{ font-size: 16px; font-weight: bold; color: #2c3e50; margin-bottom: 15px; }}
+        .info-line {{ margin: 3px 0; }}
+        .label {{ font-weight: bold; color: #34495e; }}
+        </style>
+        
+        <div class="title">PySide6 Navicat - 数据库管理工具</div>
+        
+        <div class="info-line"><span class="label">设备类型：</span>{machine}</div>
+        <div class="info-line"><span class="label">系统版本：</span>{system_info} {system_version}</div>
+        <div class="info-line"><span class="label">系统语言：</span>zh-Hans</div>
+        <div class="info-line"><span class="label">应用版本：</span>[{current_time}] v1.0.0 (1000) #dev001</div>
+        <div class="info-line"><span class="label">应用语言：</span>zh-Hans</div>
+        <div class="info-line"><span class="label">Python版本：</span>{python_version}</div>
+        <div class="info-line"><span class="label">PySide6版本：</span>{pyside_version}</div>
+        <div class="info-line"><span class="label">处理器：</span>{processor}</div>
+        <div class="info-line"><span class="label">显示器：</span>{screen_info}</div>
+        <div class="info-line"><span class="label">构建时间：</span>{current_time}</div>
+        """
+        
+        return html
+        
+    def get_plain_text_info(self):
+        """获取纯文本版本信息用于复制"""
+        # 获取系统信息
+        system_info = platform.system()
+        system_version = platform.release()
+        machine = platform.machine()
+        processor = platform.processor()
+        
+        # 获取Python版本
+        python_version = sys.version.split()[0]
+        
+        # 获取PySide6版本
+        try:
+            import PySide6
+            pyside_version = PySide6.__version__
+        except:
+            pyside_version = "未知"
+            
+        # 获取当前时间
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # 获取屏幕信息
+        app = QApplication.instance()
+        if app:
+            screens = app.screens()
+            screen_info = ""
+            for i, screen in enumerate(screens):
+                geometry = screen.geometry()
+                dpr = screen.devicePixelRatio()
+                if i == 0:
+                    screen_info += f"({geometry.width()}x{geometry.height()})"
+                    if dpr > 1:
+                        screen_info += "/Retina"
+                else:
+                    screen_info += f", *({geometry.width()}x{geometry.height()})"
+        else:
+            screen_info = "未知"
+            
+        # 构建纯文本信息
+        text = f"""设备类型：{machine}
+系统版本：{system_info} {system_version}
+系统语言：zh-Hans
+应用版本：[{current_time}] v1.0.0 (1000) #dev001
+应用语言：zh-Hans
+Python版本：{python_version}
+PySide6版本：{pyside_version}
+处理器：{processor}
+显示器：{screen_info}
+构建时间：{current_time}"""
+        
+        return text
+        
+    def copy_to_clipboard(self):
+        """复制版本信息到剪贴板"""
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self.get_plain_text_info())
+        
+        # 显示复制成功提示
+        QMessageBox.information(self, "复制成功", "版本信息已复制到剪贴板")
 
 class MainWindow(QMainWindow):
     """主窗口类"""
@@ -582,10 +745,5 @@ class MainWindow(QMainWindow):
                 
     def show_about(self):
         """显示关于对话框"""
-        QMessageBox.about(
-            self, "关于", 
-            "PySide6 Navicat Clone\n\n"
-            "一个基于PySide6的数据库管理工具\n"
-            "版本: 1.0.0\n\n"
-            "支持MySQL、PostgreSQL、SQLite等数据库"
-        )
+        dialog = AboutDialog(self)
+        dialog.exec()
