@@ -25,14 +25,16 @@ from .query_tabs import QueryTabWidget
 from database.connection_manager import ConnectionManager
 from database.query_executor import QueryExecutor
 from database.connection_config import ConnectionConfig
+from config_manager import config
 
 class AboutDialog(QDialog):
     """关于对话框"""
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("关于 PySide6 Navicat")
-        self.setFixedSize(500, 400)
+        self.setWindowTitle(f"关于 {config.get_app_name()}")
+        width, height = config.get_about_dialog_size()
+        self.setFixedSize(width, height)
         self.setModal(True)
         
         self.init_ui()
@@ -101,22 +103,31 @@ class AboutDialog(QDialog):
         else:
             screen_info = "未知"
             
+        # 获取配置信息
+        app_name = config.get_app_name()
+        app_description = config.get_app_description()
+        app_version = config.get_app_version()
+        build_number = config.get_build_number()
+        build_id = config.get_build_id()
+        app_language = config.get_app_language()
+        colors = config.get_about_colors()
+        
         # 构建版本信息HTML
         html = f"""
         <style>
         body {{ font-family: 'Microsoft YaHei', Arial, sans-serif; font-size: 12px; }}
-        .title {{ font-size: 16px; font-weight: bold; color: #2c3e50; margin-bottom: 15px; }}
+        .title {{ font-size: 16px; font-weight: bold; color: {colors['title_color']}; margin-bottom: 15px; }}
         .info-line {{ margin: 3px 0; }}
-        .label {{ font-weight: bold; color: #34495e; }}
+        .label {{ font-weight: bold; color: {colors['label_color']}; }}
         </style>
         
-        <div class="title">PySide6 Navicat - 数据库管理工具</div>
+        <div class="title">{app_name} - {app_description}</div>
         
         <div class="info-line"><span class="label">设备类型：</span>{machine}</div>
         <div class="info-line"><span class="label">系统版本：</span>{system_info} {system_version}</div>
         <div class="info-line"><span class="label">系统语言：</span>zh-Hans</div>
-        <div class="info-line"><span class="label">应用版本：</span>[{current_time}] v1.0.0 (1000) #dev001</div>
-        <div class="info-line"><span class="label">应用语言：</span>zh-Hans</div>
+        <div class="info-line"><span class="label">应用版本：</span>[{current_time}] v{app_version} ({build_number}) #{build_id}</div>
+        <div class="info-line"><span class="label">应用语言：</span>{app_language}</div>
         <div class="info-line"><span class="label">Python版本：</span>{python_version}</div>
         <div class="info-line"><span class="label">PySide6版本：</span>{pyside_version}</div>
         <div class="info-line"><span class="label">处理器：</span>{processor}</div>
@@ -164,12 +175,18 @@ class AboutDialog(QDialog):
         else:
             screen_info = "未知"
             
+        # 获取配置信息
+        app_version = config.get_app_version()
+        build_number = config.get_build_number()
+        build_id = config.get_build_id()
+        app_language = config.get_app_language()
+        
         # 构建纯文本信息
         text = f"""设备类型：{machine}
 系统版本：{system_info} {system_version}
 系统语言：zh-Hans
-应用版本：[{current_time}] v1.0.0 (1000) #dev001
-应用语言：zh-Hans
+应用版本：[{current_time}] v{app_version} ({build_number}) #{build_id}
+应用语言：{app_language}
 Python版本：{python_version}
 PySide6版本：{pyside_version}
 处理器：{processor}
@@ -202,8 +219,9 @@ class MainWindow(QMainWindow):
         
     def init_ui(self):
         """初始化用户界面"""
-        self.setWindowTitle("PySide6 Navicat - 数据库管理工具")
-        self.setGeometry(100, 100, 1400, 900)
+        self.setWindowTitle(config.get_window_title())
+        width, height = config.get_window_size()
+        self.setGeometry(100, 100, width, height)
         
         # 创建菜单栏
         self.create_menu_bar()

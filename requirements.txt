@@ -3,6 +3,9 @@
 # 核心GUI框架
 PySide6>=6.5.0
 
+# 配置文件解析
+toml>=0.10.2
+
 # 数据库驱动
 # MySQL
 PyMySQL>=1.0.2

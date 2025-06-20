@@ -1,0 +1,34 @@
+[app]
+name = "PySide6 Navicat"
+version = "1.0.0"
+build_number = 1000
+build_id = "dev001"
+description = "数据库管理工具"
+organization = "Database Tools"
+language = "zh-Hans"
+
+[window]
+title = "PySide6 Navicat - 数据库管理工具"
+width = 1400
+height = 900
+icon_path = "resources/icons/app.png"
+
+[database]
+supported_types = ["MySQL", "PostgreSQL", "SQLite", "SQL Server"]
+
+[database.default_port]
+MySQL = 3306
+PostgreSQL = 5432
+SQLite = 0
+"SQL Server" = 1433
+
+[ui]
+default_font = "Microsoft YaHei"
+font_size = 12
+theme = "default"
+
+[about]
+title_color = "#2c3e50"
+label_color = "#34495e"
+dialog_width = 500
+dialog_height = 400
