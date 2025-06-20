@@ -1,0 +1,37 @@
+# PySide6 Navicat Clone - 依赖包列表
+
+# 核心GUI框架
+PySide6>=6.5.0
+
+# 数据库驱动
+# MySQL
+PyMySQL>=1.0.2
+
+# PostgreSQL
+psycopg2-binary>=2.9.5
+
+# SQL Server (Windows)
+# pyodbc>=4.0.35
+
+# Oracle (需要Oracle客户端)
+# cx_Oracle>=8.3.0
+
+# SQLite (Python内置，无需安装)
+
+# 数据处理
+numpy>=1.24.0
+pandas>=2.0.0
+
+# 文本处理
+chardet>=5.1.0
+
+# 配置文件处理
+PyYAML>=6.0
+
+# 日志
+loguru>=0.7.0
+
+# 开发工具（可选）
+# pytest>=7.2.0
+# black>=23.0.0
+# flake8>=6.0.0

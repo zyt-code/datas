@@ -1,0 +1,76 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environment
+venv/
+env/
+ENV/
+.venv/
+
+# PyInstaller artifacts
+*.spec
+
+# Qt Designer UI compilation
+*.pyc
+*.qmlc
+*.qrc~
+
+# PySide/Qt specific cache
+*.qmlcache/
+*.qrc.py
+__pyinstaller/
+
+# PyCharm / VSCode
+.idea/
+.vscode/
+*.code-workspace
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test cache
+htmlcov/
+.coverage
+.tox/
+.pytest_cache/
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.*
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# MyPy / Type hints
+.mypy_cache/
+.dmypy.json
+.pyre/
+
+# macOS
+.AppleDouble
+.LSOverride
+
+# Windows
+*.bak
+*.swp
