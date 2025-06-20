@@ -11,7 +11,7 @@ language = "zh-Hans"
 title = "PySide6 Navicat - 数据库管理工具"
 width = 1400
 height = 900
-icon_path = "resources/icons/app.png"
+icon_path = "resources/icons/logo.svg"
 
 [database]
 supported_types = ["MySQL", "PostgreSQL", "SQLite", "SQL Server"]

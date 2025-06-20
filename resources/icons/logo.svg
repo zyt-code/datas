@@ -1,0 +1,37 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景圆形 -->
+  <circle cx="32" cy="32" r="30" fill="#2563eb" stroke="#1e40af" stroke-width="2"/>
+  
+  <!-- 数据库图标主体 -->
+  <g transform="translate(16, 12)">
+    <!-- 数据库顶部椭圆 -->
+    <ellipse cx="16" cy="8" rx="14" ry="4" fill="#ffffff" opacity="0.9"/>
+    
+    <!-- 数据库中间部分 -->
+    <rect x="2" y="8" width="28" height="24" fill="#ffffff" opacity="0.8"/>
+    
+    <!-- 数据库中间分隔线 -->
+    <ellipse cx="16" cy="16" rx="14" ry="4" fill="none" stroke="#2563eb" stroke-width="1.5" opacity="0.7"/>
+    <ellipse cx="16" cy="24" rx="14" ry="4" fill="none" stroke="#2563eb" stroke-width="1.5" opacity="0.7"/>
+    
+    <!-- 数据库底部椭圆 -->
+    <ellipse cx="16" cy="32" rx="14" ry="4" fill="#ffffff" opacity="0.9"/>
+    
+    <!-- 数据连接线装饰 -->
+    <g opacity="0.6">
+      <line x1="8" y1="12" x2="12" y2="12" stroke="#2563eb" stroke-width="1"/>
+      <line x1="8" y1="14" x2="16" y2="14" stroke="#2563eb" stroke-width="1"/>
+      <line x1="8" y1="20" x2="14" y2="20" stroke="#2563eb" stroke-width="1"/>
+      <line x1="8" y1="22" x2="18" y2="22" stroke="#2563eb" stroke-width="1"/>
+      <line x1="8" y1="28" x2="12" y2="28" stroke="#2563eb" stroke-width="1"/>
+      <line x1="8" y1="30" x2="16" y2="30" stroke="#2563eb" stroke-width="1"/>
+    </g>
+  </g>
+  
+  <!-- 右下角小装饰点 -->
+  <circle cx="48" cy="48" r="3" fill="#ffffff" opacity="0.7"/>
+  <circle cx="52" cy="44" r="2" fill="#ffffff" opacity="0.5"/>
+  
+  <!-- 左上角小装饰 -->
+  <path d="M 12 16 L 16 12 L 20 16 L 16 20 Z" fill="#ffffff" opacity="0.3"/>
+</svg>
