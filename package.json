@@ -1,0 +1,71 @@
+{
+  "name": "datagrip-lite",
+  "version": "1.0.0",
+  "description": "A lightweight SQL client built with Electron and Monaco Editor",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "npm run build && electron .",
+    "pack": "electron-builder",
+    "dist": "npm run build && electron-builder",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest --watch"
+  },
+  "keywords": [
+    "sql",
+    "database",
+    "electron",
+    "monaco",
+    "mysql"
+  ],
+  "author": "DataGrip Lite Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.1.0",
+    "@testing-library/react": "^14.1.0",
+    "@testing-library/user-event": "^14.5.0",
+    "@types/node": "^18.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.6.0",
+    "@vitest/coverage-v8": "^1.0.0",
+    "@vitest/ui": "^1.0.0",
+    "electron": "^27.0.0",
+    "electron-builder": "^24.0.0",
+    "jsdom": "^23.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^6.3.5",
+    "vite-plugin-electron": "^0.29.0",
+    "vite-plugin-electron-renderer": "^0.14.6",
+    "vitest": "^1.0.0"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@monaco-editor/react": "^4.6.0",
+    "@mui/icons-material": "^5.15.0",
+    "@mui/material": "^5.15.0",
+    "monaco-editor": "^0.44.0",
+    "mysql2": "^3.6.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-resizable-panels": "^3.0.3"
+  },
+  "build": {
+    "appId": "com.datagrip.lite",
+    "productName": "DataGrip Lite",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "dist-renderer/**/*",
+      "node_modules/**/*"
+    ]
+  }
+}
