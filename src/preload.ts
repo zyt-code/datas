@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 // Define the API interface
 interface ElectronAPI {
   // Connection management
-  testConnection: (config: any) => Promise<boolean>;
+  testConnection: (config: any) => Promise<{ success: boolean; error?: string }>;
   saveConnection: (config: any) => Promise<string>;
   getConnections: () => Promise<any[]>;
   deleteConnection: (id: string) => Promise<boolean>;
@@ -72,13 +72,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
         if (result.data.length > 0) {
           // Extract columns from fields or first row
           if (result.fields && result.fields.length > 0) {
-            columns = result.fields.map(field => field.name);
+            columns = result.fields.map((field: any) => field.name);
           } else if (result.data.length > 0) {
             columns = Object.keys(result.data[0]);
           }
           
           // Convert data to rows format
-          const rows = result.data.map(row => 
+          const rows = result.data.map((row: any) => 
             columns.map(col => row[col])
           );
           allRows.push(...rows);

@@ -29,6 +29,7 @@ export interface Connection {
 }
 
 export interface ConnectionData {
+  id?: string;
   name: string;
   type: string;
   host: string;

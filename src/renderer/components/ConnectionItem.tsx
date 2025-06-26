@@ -32,6 +32,7 @@ interface ConnectionItemProps {
   isConnected: boolean;
   onSelect: (connectionId: string) => void;
   onConnect: (connectionId: string) => void;
+  onDisconnect: (connectionId: string) => void;
   onNewConsole: (connectionId: string) => void;
   onEdit: (connectionId: string) => void;
   onDelete: (connectionId: string) => void;
@@ -43,6 +44,7 @@ const ConnectionItem: React.FC<ConnectionItemProps> = ({
   isConnected,
   onSelect,
   onConnect,
+  onDisconnect,
   onNewConsole,
   onEdit,
   onDelete,
@@ -133,7 +135,7 @@ const ConnectionItem: React.FC<ConnectionItemProps> = ({
         }}
       >
         <MenuItem
-          onClick={() => handleMenuAction(() => onConnect(connection.id))}
+          onClick={() => handleMenuAction(() => isConnected ? onDisconnect(connection.id) : onConnect(connection.id))}
         >
           <ListItemIcon>
             {isConnected ? (

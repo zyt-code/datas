@@ -23,6 +23,7 @@ interface ConnectionDialogProps {
 }
 
 interface ConnectionData {
+  id?: string;
   name: string;
   type: string;
   host: string;
@@ -43,6 +44,7 @@ const ConnectionDialog: React.FC<ConnectionDialogProps> = ({ open, onClose, onSa
     password: '',
   });
   const [error, setError] = useState<string>('');
+  const [success, setSuccess] = useState<string>('');
   const [testing, setTesting] = useState(false);
 
   // Initialize form data when editing a connection
@@ -61,12 +63,14 @@ const ConnectionDialog: React.FC<ConnectionDialogProps> = ({ open, onClose, onSa
       });
     }
     setError('');
+    setSuccess('');
   }, [connection, open]);
 
   const handleInputChange = (field: keyof ConnectionData) => (event: any) => {
     const value = field === 'port' ? parseInt(event.target.value) || 0 : event.target.value;
     setFormData(prev => ({ ...prev, [field]: value }));
     setError('');
+    setSuccess('');
   };
 
   // MySQL only - no type change needed
@@ -74,33 +78,40 @@ const ConnectionDialog: React.FC<ConnectionDialogProps> = ({ open, onClose, onSa
   const handleTestConnection = async () => {
     setTesting(true);
     setError('');
+    setSuccess('');
 
     try {
       const result = await window.electronAPI.testConnection(formData);
       if (result.success) {
+        setSuccess('连接成功!');
         setError('');
-        alert('Connection successful!');
       } else {
         setError(result.error || 'Connection failed');
+        setSuccess('');
       }
     } catch (err) {
       setError('Failed to test connection');
+      setSuccess('');
     } finally {
       setTesting(false);
     }
   };
 
   const handleSave = () => {
-    if (!formData.name.trim()) {
-      setError('Connection name is required');
-      return;
-    }
     if (!formData.host.trim()) {
       setError('Host is required');
       return;
     }
 
-    onSave(formData);
+    // Auto-generate connection name if empty
+    const finalFormData = { ...formData };
+    if (!finalFormData.name.trim()) {
+      finalFormData.name = `${finalFormData.username || 'user'}@${finalFormData.host}:${finalFormData.port}`;
+    }
+
+    console.log('ConnectionDialog - handleSave called with formData:', finalFormData);
+    console.log('ConnectionDialog - original connection prop:', connection);
+    onSave(finalFormData);
     handleClose();
   };
 
@@ -115,6 +126,7 @@ const ConnectionDialog: React.FC<ConnectionDialogProps> = ({ open, onClose, onSa
       password: '',
     });
     setError('');
+    setSuccess('');
     onClose();
   };
 
@@ -144,6 +156,11 @@ const ConnectionDialog: React.FC<ConnectionDialogProps> = ({ open, onClose, onSa
               {error}
             </Alert>
           )}
+          {success && (
+            <Alert severity="success" sx={{ fontSize: 12 }}>
+              {success}
+            </Alert>
+          )}
 
           <TextField
             label="Connection Name"
@@ -151,7 +168,7 @@ const ConnectionDialog: React.FC<ConnectionDialogProps> = ({ open, onClose, onSa
             onChange={handleInputChange('name')}
             fullWidth
             size="small"
-            required
+            helperText="Leave empty to auto-generate: username@host:port"
           />
 
           {/* Fixed to MySQL only */}
@@ -227,7 +244,7 @@ const ConnectionDialog: React.FC<ConnectionDialogProps> = ({ open, onClose, onSa
           onClick={handleSave}
           variant="contained"
           size="small"
-          disabled={!formData.name.trim() || !formData.host.trim()}
+          disabled={!formData.host.trim()}
         >
           Save
         </Button>

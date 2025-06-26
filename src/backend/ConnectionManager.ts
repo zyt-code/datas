@@ -37,7 +37,7 @@ export class ConnectionManager {
     this.loadSavedConnections();
   }
 
-  async testConnection(config: ConnectionConfig): Promise<boolean> {
+  async testConnection(config: ConnectionConfig): Promise<{ success: boolean; error?: string }> {
     try {
       const connection = await mysql.createConnection({
         host: config.host,
@@ -51,15 +51,18 @@ export class ConnectionManager {
 
       await connection.ping();
       await connection.end();
-      return true;
-    } catch (error) {
+      return { success: true };
+    } catch (error: any) {
       console.error('Connection test failed:', error);
-      return false;
+      const errorMessage = error?.message || error?.code || 'Unknown connection error';
+      return { success: false, error: errorMessage };
     }
   }
 
   async saveConnection(config: ConnectionConfig): Promise<string> {
+    console.log('ConnectionManager - saveConnection called with config:', config);
     const id = config.id || this.generateId();
+    console.log('ConnectionManager - using id:', id, 'original config.id:', config.id);
     const savedConnection: SavedConnection = {
       ...config,
       id,
@@ -69,9 +72,12 @@ export class ConnectionManager {
 
     // Update existing or add new
     const existingIndex = this.savedConnections.findIndex(conn => conn.id === id);
+    console.log('ConnectionManager - existingIndex:', existingIndex);
     if (existingIndex >= 0) {
+      console.log('ConnectionManager - updating existing connection at index:', existingIndex);
       this.savedConnections[existingIndex] = savedConnection;
     } else {
+      console.log('ConnectionManager - adding new connection');
       this.savedConnections.push(savedConnection);
     }
 
@@ -80,10 +86,7 @@ export class ConnectionManager {
   }
 
   async getConnections(): Promise<SavedConnection[]> {
-    return this.savedConnections.map(conn => ({
-      ...conn,
-      password: '******' // Don't expose passwords
-    }));
+    return this.savedConnections;
   }
 
   async deleteConnection(id: string): Promise<boolean> {

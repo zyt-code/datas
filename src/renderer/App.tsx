@@ -23,6 +23,7 @@ import {
   Tooltip,
   Alert,
   Chip,
+  Snackbar,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -39,6 +40,7 @@ import ConnectionDialog from './components/ConnectionDialog';
 import ConnectionItem from './components/ConnectionItem';
 import SqlEditor from './components/SqlEditor';
 import ResultsPanel from './components/ResultsPanel';
+import ConfirmDialog from './components/ConfirmDialog';
 
 const SIDEBAR_WIDTH = 300;
 
@@ -78,6 +80,14 @@ const App: React.FC = () => {
   const [showWelcome, setShowWelcome] = useState(true);
   const [showResultsPanel, setShowResultsPanel] = useState(false);
   const [heartbeatIntervals, setHeartbeatIntervals] = useState<Map<string, NodeJS.Timeout>>(new Map());
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ open: false, title: '', message: '', onConfirm: () => {} });
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [showError, setShowError] = useState<boolean>(false);
 
   useEffect(() => {
     loadConnections();
@@ -93,6 +103,9 @@ const App: React.FC = () => {
       })));
     } catch (error) {
       console.error('Failed to load connections:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      setErrorMessage(`加载连接列表失败: ${errorMsg}`);
+      setShowError(true);
     }
   };
 
@@ -103,12 +116,17 @@ const App: React.FC = () => {
 
   const handleConnectionSave = async (connectionData: any) => {
     try {
+      console.log('App.tsx - handleConnectionSave called with data:', connectionData);
+      console.log('App.tsx - editingConnection state:', editingConnection);
       await window.electronAPI.saveConnection(connectionData);
       await loadConnections();
       setConnectionDialogOpen(false);
       setEditingConnection(null);
     } catch (error) {
       console.error('Failed to save connection:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to save connection';
+      setErrorMessage(`保存连接失败: ${errorMsg}`);
+      setShowError(true);
     }
   };
 
@@ -117,6 +135,13 @@ const App: React.FC = () => {
   };
 
   const handleConnectionConnect = async (connectionId: string) => {
+    // 如果已经连接，则直接设置为活动连接
+    if (connectedConnections.has(connectionId)) {
+      setActiveConnection(connectionId);
+      await loadDatabases(connectionId);
+      return;
+    }
+
     try {
       const result = await window.electronAPI.connectToDatabase(connectionId);
 
@@ -135,9 +160,14 @@ const App: React.FC = () => {
         }
       } else {
         console.error('Failed to connect to database');
+        setErrorMessage('连接数据库失败: 连接被拒绝或配置错误');
+        setShowError(true);
       }
     } catch (error) {
       console.error('Connection failed:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown connection error';
+      setErrorMessage(`连接失败: ${errorMsg}`);
+      setShowError(true);
     }
   };
 
@@ -149,9 +179,15 @@ const App: React.FC = () => {
         setDatabases(result.databases || []);
       } else {
         console.error('Failed to load databases:', result?.error);
+        const errorMsg = result?.error || 'Unknown error';
+        setErrorMessage(`加载数据库列表失败: ${errorMsg}`);
+        setShowError(true);
       }
     } catch (error) {
       console.error('Failed to load databases:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      setErrorMessage(`加载数据库列表失败: ${errorMsg}`);
+      setShowError(true);
     }
   };
 
@@ -228,6 +264,9 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to disconnect:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown disconnection error';
+      setErrorMessage(`断开连接失败: ${errorMsg}`);
+      setShowError(true);
     }
   };
 
@@ -258,28 +297,76 @@ const App: React.FC = () => {
 
   const handleEditConnection = (connectionId: string) => {
     const connection = connections.find(c => c.id === connectionId);
-    if (connection) {
+    if (!connection) return;
+
+    // 如果连接已连接，先提示断开连接
+    if (connectedConnections.has(connectionId)) {
+      setConfirmDialog({
+        open: true,
+        title: '编辑连接',
+        message: `连接 "${connection.name}" 当前处于连接状态。编辑连接前需要先断开连接，是否继续？`,
+        onConfirm: async () => {
+          await handleConnectionDisconnect(connectionId);
+          setEditingConnection(connection);
+          setConnectionDialogOpen(true);
+          setConfirmDialog(prev => ({ ...prev, open: false }));
+        }
+      });
+    } else {
       setEditingConnection(connection);
       setConnectionDialogOpen(true);
     }
   };
 
   const handleDeleteConnection = async (connectionId: string) => {
-    try {
-      await window.electronAPI.deleteConnection(connectionId);
-      await loadConnections();
+    const connection = connections.find(c => c.id === connectionId);
+    if (!connection) return;
 
-      // Reset active connection if this was it
-      if (activeConnection === connectionId) {
-        setActiveConnection(null);
+    const performDelete = async () => {
+      try {
+        await window.electronAPI.deleteConnection(connectionId);
+        await loadConnections();
+
+        // Reset active connection if this was it
+        if (activeConnection === connectionId) {
+          setActiveConnection(null);
+        }
+        setConnectedConnections(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(connectionId);
+          return newSet;
+        });
+      } catch (error) {
+        console.error('Failed to delete connection:', error);
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        setErrorMessage(`删除连接失败: ${errorMsg}`);
+        setShowError(true);
       }
-      setConnectedConnections(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(connectionId);
-        return newSet;
+    };
+
+    // 如果连接已连接，先提示断开连接
+    if (connectedConnections.has(connectionId)) {
+      setConfirmDialog({
+        open: true,
+        title: '删除连接',
+        message: `连接 "${connection.name}" 当前处于连接状态。删除连接前需要先断开连接，是否继续？`,
+        onConfirm: async () => {
+          await handleConnectionDisconnect(connectionId);
+          await performDelete();
+          setConfirmDialog(prev => ({ ...prev, open: false }));
+        }
       });
-    } catch (error) {
-      console.error('Failed to delete connection:', error);
+    } else {
+      // 未连接状态下也需要确认删除
+      setConfirmDialog({
+        open: true,
+        title: '删除连接',
+        message: `确定要删除连接 "${connection.name}" 吗？此操作不可撤销。`,
+        onConfirm: async () => {
+          await performDelete();
+          setConfirmDialog(prev => ({ ...prev, open: false }));
+        }
+      });
     }
   };
 
@@ -350,6 +437,7 @@ const App: React.FC = () => {
       setShowResultsPanel(true);
     } catch (error) {
       console.error('Query execution failed:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown query execution error';
       setQueryResults({
         error: 'Query execution failed',
         message: error,
@@ -362,6 +450,8 @@ const App: React.FC = () => {
         }
       });
       setShowResultsPanel(true);
+      setErrorMessage(`查询执行失败: ${errorMsg}`);
+      setShowError(true);
     } finally {
       setIsExecuting(false);
     }
@@ -386,6 +476,15 @@ const App: React.FC = () => {
   };
 
   const activeTabData = tabs.find(tab => tab.id === activeTab);
+
+  const handleConfirmDialogCancel = () => {
+    setConfirmDialog(prev => ({ ...prev, open: false }));
+  };
+
+  const handleErrorClose = () => {
+    setShowError(false);
+    setErrorMessage('');
+  };
 
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>
@@ -429,6 +528,7 @@ const App: React.FC = () => {
               isConnected={connectedConnections.has(connection.id)}
               onSelect={handleActiveConnectionChange}
               onConnect={handleConnectionConnect}
+              onDisconnect={handleConnectionDisconnect}
               onNewConsole={handleNewConsole}
               onEdit={(id) => {
                 const conn = connections.find(c => c.id === id);
@@ -665,6 +765,7 @@ const App: React.FC = () => {
         }}
         onSave={handleConnectionSave}
         connection={editingConnection ? {
+          id: editingConnection.id,
           name: editingConnection.name,
           type: editingConnection.type,
           host: editingConnection.host,
@@ -674,6 +775,27 @@ const App: React.FC = () => {
           password: editingConnection.password
         } : null}
       />
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={handleConfirmDialogCancel}
+      />
+
+      {/* Error Snackbar */}
+      <Snackbar
+        open={showError}
+        autoHideDuration={6000}
+        onClose={handleErrorClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={handleErrorClose} severity="error" sx={{ width: '100%' }}>
+          {errorMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
